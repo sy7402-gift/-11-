@@ -1,1 +1,499 @@
-file:///C:/Users/user/Downloads/%EB%95%8C%EB%B0%80%EC%9D%B4%EC%9E%A5%EA%B0%91_%ED%8B%80%EB%A6%B0%EA%B7%B8%EB%A6%BC%EC%B0%BE%EA%B8%B0_%EA%B3%A0%EC%A0%95%ED%8C%90%20(4).html
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>끝까지 해 보자, 때밀이 장갑! - 그림책 제목 맞추기</title>
+    <!-- Tailwind CSS 로드 -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- 구글 폰트 (가독성이 뛰어나고 친근한 고딕/둥근 폰트) -->
+    <link href="https://fonts.googleapis.com/css2?family=Jua&family=Noto+Sans+KR:wght@500;700;900&display=swap" rel="stylesheet">
+    <!-- 폭죽(축하) 효과 라이브러리 -->
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+    <style>
+        body {
+            font-family: 'Noto Sans KR', sans-serif;
+            background-color: #FEF9E7; /* 따뜻하고 눈이 편안한 크림 옐로우 배경 */
+            user-select: none;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .font-jua {
+            font-family: 'Jua', sans-serif;
+        }
+        /* 오답 시 흔들림 애니메이션 */
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            20%, 60% { transform: translateX(-8px); }
+            40%, 80% { transform: translateX(8px); }
+        }
+        .animate-shake {
+            animation: shake 0.45s cubic-bezier(.36,.07,.19,.97) both;
+        }
+        /* 정답 시 쫀득하게 커지는 애니메이션 */
+        @keyframes popIn {
+            0% { transform: scale(0.7); opacity: 0; }
+            70% { transform: scale(1.1); }
+            100% { transform: scale(1); opacity: 1; }
+        }
+        .animate-pop {
+            animation: popIn 0.35s ease-out forwards;
+        }
+        /* 책 표지 비율 및 그림자 */
+        .book-cover-container {
+            aspect-ratio: 3 / 4;
+            box-shadow: 0 15px 30px -5px rgba(0, 0, 0, 0.2), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col justify-between p-2 sm:p-4 max-w-5xl mx-auto">
+
+    <!-- 상단 헤더: 제목 및 음성 지원 ON/OFF 토글, 다시하기 버튼 -->
+    <header class="w-full bg-white rounded-2xl shadow-sm border-2 border-amber-200 px-4 py-2.5 mb-2 flex flex-wrap items-center justify-between gap-2">
+        <div class="flex items-center gap-2">
+            <span class="text-2xl sm:text-3xl">🧼</span>
+            <h1 class="font-jua text-xl sm:text-2xl text-amber-900 tracking-wide">그림책 제목 맞추기</h1>
+        </div>
+
+        <div class="flex items-center gap-2 sm:gap-3">
+            <!-- 표지 사진 불러오기 버튼 (실제 사진 적용) -->
+            <label for="coverUpload" class="cursor-pointer bg-amber-100 hover:bg-amber-200 active:scale-95 text-amber-900 font-bold text-sm sm:text-base px-3.5 py-2 rounded-xl border-2 border-amber-300 transition flex items-center gap-1.5 shadow-sm">
+                <span>🖼️</span>
+                <span>표지 사진 넣기</span>
+            </label>
+            <input type="file" id="coverUpload" accept="image/*" class="hidden" onchange="handleImageUpload(event)">
+
+            <!-- 음성 지원 ON/OFF 선택 토글 버튼 -->
+            <button id="ttsToggleBtn" onclick="toggleTTS()" class="flex items-center gap-2 px-3.5 py-2 rounded-xl font-bold text-sm sm:text-base transition shadow-sm active:scale-95 bg-emerald-500 text-white border-2 border-emerald-600">
+                <span id="ttsIcon" class="text-lg">🔊</span>
+                <span id="ttsText">음성 켜짐</span>
+            </button>
+
+            <!-- 처음부터 다시하기 버튼 -->
+            <button onclick="resetGame()" class="bg-slate-100 hover:bg-slate-200 active:scale-95 text-slate-700 font-bold text-sm sm:text-base px-3.5 py-2 rounded-xl border-2 border-slate-300 transition flex items-center gap-1">
+                <span>🔄 다시하기</span>
+            </button>
+        </div>
+    </header>
+
+    <!-- 메인 학습 영역 (한 화면에 꽉 차도록 좌/우 또는 상/하 배치) -->
+    <main class="flex-1 grid grid-cols-1 md:grid-cols-12 gap-3 sm:gap-5 items-center my-auto">
+        
+        <!-- 왼쪽: 그림책 표지 및 빈칸 영역 -->
+        <section class="md:col-span-6 flex flex-col items-center justify-center w-full">
+            <div id="bookContainer" class="book-cover-container relative w-full max-w-[350px] sm:max-w-[400px] rounded-2xl overflow-hidden bg-amber-50 border-4 border-amber-300">
+                
+                <!-- 실제 업로드된 표지 사진이 표시될 이미지 태그 -->
+                <img id="uploadedCoverImg" src="" alt="그림책 표지 사진" class="hidden w-full h-full object-cover">
+
+                <!-- 사진을 넣기 전 안내 플레이스홀더 -->
+                <div id="uploadPlaceholder" onclick="document.getElementById('coverUpload').click()" class="w-full h-full flex flex-col items-center justify-center p-6 text-center cursor-pointer hover:bg-amber-100/70 transition">
+                    <div class="text-5xl mb-3">📸</div>
+                    <p class="font-jua text-2xl text-amber-900 mb-2">여기를 눌러<br>그림책 표지 사진을 넣어주세요!</p>
+                    <p class="text-sm font-medium text-amber-700 bg-amber-200/60 px-3 py-1.5 rounded-lg">
+                        한 번 넣으면 다음에도 계속 저장돼요 ✨
+                    </p>
+                </div>
+
+                <!-- ★ 표지 위의 빈칸 1: [ 때밀이 ] 자리 ★ -->
+                <div id="slot1" onclick="speakSlotHint(1)"
+                     class="absolute top-[20.5%] left-[12%] w-[43%] h-[12.5%] rounded-2xl border-4 border-dashed border-emerald-600 bg-white/95 shadow-lg flex items-center justify-center cursor-pointer transition-all">
+                    <span id="slot1Text" class="font-jua text-2xl sm:text-3xl text-emerald-700/60">1번 빈칸</span>
+                </div>
+
+                <!-- ★ 표지 위의 빈칸 2: [ 장갑 ] 자리 ★ -->
+                <div id="slot2" onclick="speakSlotHint(2)"
+                     class="absolute top-[24%] right-[9%] w-[34%] h-[12.5%] rounded-2xl border-4 border-dashed border-emerald-600 bg-white/95 shadow-lg flex items-center justify-center cursor-pointer transition-all">
+                    <span id="slot2Text" class="font-jua text-2xl sm:text-3xl text-emerald-700/60">2번 빈칸</span>
+                </div>
+
+                <!-- 전체 제목 듣기 플로팅 버튼 -->
+                <button onclick="readFullTitle()" class="absolute bottom-3 right-3 z-20 bg-amber-500 hover:bg-amber-600 active:scale-95 text-white font-bold px-3.5 py-2 rounded-full shadow-lg flex items-center gap-1.5 text-sm border-2 border-white">
+                    <span>🗣️</span>
+                    <span>제목 듣기</span>
+                </button>
+            </div>
+        </section>
+
+        <!-- 오른쪽: 보기 선택 카드 영역 -->
+        <section class="md:col-span-6 flex flex-col gap-3 sm:gap-4 w-full bg-white p-4 sm:p-5 rounded-3xl shadow-md border-2 border-amber-200">
+            
+            <!-- 안내 메시지 배너 -->
+            <div id="feedbackBanner" class="w-full bg-amber-100 border-2 border-amber-300 rounded-2xl p-3 text-center transition-all">
+                <p id="feedbackText" class="font-jua text-lg sm:text-xl text-amber-950">
+                    알맞은 글자 카드를 눌러 빈칸을 채워보세요!
+                </p>
+            </div>
+
+            <!-- 1번 빈칸 보기 그룹 (때밀이) -->
+            <div id="group1Container" class="bg-emerald-50/80 p-3.5 rounded-2xl border-2 border-emerald-200 transition-all">
+                <div class="flex items-center justify-between mb-2.5">
+                    <span class="font-jua text-lg sm:text-xl text-emerald-900 flex items-center gap-1.5">
+                        <span class="bg-emerald-600 text-white w-7 h-7 rounded-full inline-flex items-center justify-center text-base">1</span>
+                        첫 번째 빈칸에 들어갈 말은?
+                    </span>
+                    <span id="group1Badge" class="hidden bg-emerald-600 text-white text-xs font-bold px-2.5 py-1 rounded-full">완성! ✅</span>
+                </div>
+                <div id="options1Grid" class="grid grid-cols-2 gap-2.5">
+                    <!-- 자바스크립트로 버튼 생성 -->
+                </div>
+            </div>
+
+            <!-- 2번 빈칸 보기 그룹 (장갑) -->
+            <div id="group2Container" class="bg-sky-50/80 p-3.5 rounded-2xl border-2 border-sky-200 transition-all">
+                <div class="flex items-center justify-between mb-2.5">
+                    <span class="font-jua text-lg sm:text-xl text-sky-900 flex items-center gap-1.5">
+                        <span class="bg-sky-600 text-white w-7 h-7 rounded-full inline-flex items-center justify-center text-base">2</span>
+                        두 번째 빈칸에 들어갈 말은?
+                    </span>
+                    <span id="group2Badge" class="hidden bg-sky-600 text-white text-xs font-bold px-2.5 py-1 rounded-full">완성! ✅</span>
+                </div>
+                <div id="options2Grid" class="grid grid-cols-2 gap-2.5">
+                    <!-- 자바스크립트로 버튼 생성 -->
+                </div>
+            </div>
+
+        </section>
+    </main>
+
+    <!-- 모두 맞혔을 때 나타나는 축하 모달 -->
+    <div id="successModal" class="hidden fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4">
+        <div class="bg-white rounded-3xl max-w-md w-full p-6 text-center shadow-2xl border-4 border-amber-400 animate-pop">
+            <div class="text-6xl mb-3">🎉👏🎊</div>
+            <h2 class="font-jua text-3xl text-amber-600 mb-2">참 잘했어요!</h2>
+            <p class="text-lg font-bold text-slate-700 mb-5">
+                그림책 제목을 멋지게 완성했어요!<br>
+                <span class="inline-block mt-2 px-4 py-2 bg-amber-100 text-amber-900 rounded-xl font-jua text-2xl">
+                    "끝까지 해 보자, 때밀이 장갑!"
+                </span>
+            </p>
+            <div class="flex flex-col sm:flex-row gap-2.5 justify-center">
+                <button onclick="readFullTitle()" class="flex-1 bg-emerald-500 hover:bg-emerald-600 active:scale-95 text-white font-jua text-xl py-3 px-4 rounded-2xl shadow-md transition">
+                    🔊 제목 다시 듣기
+                </button>
+                <button onclick="resetGame()" class="flex-1 bg-amber-500 hover:bg-amber-600 active:scale-95 text-white font-jua text-xl py-3 px-4 rounded-2xl shadow-md transition">
+                    🔄 한 번 더 하기
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ==========================================
+        // 1. 학습 데이터 및 상태 관리
+        // ==========================================
+        const GAME_DATA = {
+            slot1: {
+                answer: '때밀이',
+                options: ['때밀이', '때수건', '때타올', '떼밀이'],
+                solved: false
+            },
+            slot2: {
+                answer: '장갑',
+                options: ['장갑', '장수', '장성', '징갑'],
+                solved: false
+            }
+        };
+
+        let isTTSEnabled = true; // 음성 지원 기본 켜짐
+
+        // ==========================================
+        // 2. 음성 지원 (Web Speech API - 한국어 TTS)
+        // ==========================================
+        function toggleTTS() {
+            isTTSEnabled = !isTTSEnabled;
+            const btn = document.getElementById('ttsToggleBtn');
+            const icon = document.getElementById('ttsIcon');
+            const text = document.getElementById('ttsText');
+
+            if (isTTSEnabled) {
+                btn.className = "flex items-center gap-2 px-3.5 py-2 rounded-xl font-bold text-sm sm:text-base transition shadow-sm active:scale-95 bg-emerald-500 text-white border-2 border-emerald-600";
+                icon.textContent = "🔊";
+                text.textContent = "음성 켜짐";
+                speak("음성 지원을 켰습니다.");
+            } else {
+                window.speechSynthesis.cancel();
+                btn.className = "flex items-center gap-2 px-3.5 py-2 rounded-xl font-bold text-sm sm:text-base transition shadow-sm active:scale-95 bg-slate-200 text-slate-600 border-2 border-slate-300";
+                icon.textContent = "🔇";
+                text.textContent = "음성 꺼짐";
+            }
+        }
+
+        function speak(text, callback) {
+            if (!isTTSEnabled || !('speechSynthesis' in window)) {
+                if (callback) callback();
+                return;
+            }
+
+            // 이전 음성이 재생 중이면 즉시 중단하고 새 음성 출력
+            window.speechSynthesis.cancel();
+
+            const utterance = new SpeechSynthesisUtterance(text);
+            utterance.lang = 'ko-KR';
+            utterance.rate = 0.92; // 학생들이 또박또박 듣기 편한 속도
+            utterance.pitch = 1.08; // 밝고 다정한 톤
+
+            // 한국어 음성 목소리 우선 선택
+            const voices = window.speechSynthesis.getVoices();
+            const koVoice = voices.find(v => v.lang.includes('ko'));
+            if (koVoice) utterance.voice = koVoice;
+
+            if (callback) {
+                utterance.onend = callback;
+            }
+
+            window.speechSynthesis.speak(utterance);
+        }
+
+        // 브라우저 음성 목록 비동기 로드 대비
+        if ('speechSynthesis' in window) {
+            window.speechSynthesis.onvoiceschanged = () => {
+                window.speechSynthesis.getVoices();
+            };
+        }
+
+        // ==========================================
+        // 3. 표지 사진 업로드 및 자동 저장 (LocalStorage)
+        // ==========================================
+        function handleImageUpload(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const imgDataUrl = e.target.result;
+                applyCoverImage(imgDataUrl);
+                try {
+                    // 브라우저에 저장하여 새로고침 후에도 유지
+                    localStorage.setItem('savedBookCoverImg', imgDataUrl);
+                } catch (err) {
+                    console.warn('이미지 용량이 커서 브라우저 임시 저장을 건너뜁니다.', err);
+                }
+                updateFeedback("그림책 표지 사진이 멋지게 들어갔어요! 이제 빈칸을 채워볼까요? 😊", "success");
+                speak("표지 사진이 들어갔어요! 알맞은 글자를 찾아 눌러보세요.");
+            };
+            reader.readAsDataURL(file);
+        }
+
+        function applyCoverImage(src) {
+            const img = document.getElementById('uploadedCoverImg');
+            const placeholder = document.getElementById('uploadPlaceholder');
+            img.src = src;
+            img.classList.remove('hidden');
+            placeholder.classList.add('hidden');
+        }
+
+        // ==========================================
+        // 4. 화면 초기화 및 보기 버튼 렌더링
+        // ==========================================
+        function shuffleArray(array) {
+            const arr = [...array];
+            for (let i = arr.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [arr[i], arr[j]] = [arr[j], arr[i]];
+            }
+            return arr;
+        }
+
+        function renderOptions() {
+            renderSlotOptions(1, 'options1Grid', 'emerald');
+            renderSlotOptions(2, 'options2Grid', 'sky');
+        }
+
+        function renderSlotOptions(slotNum, gridId, colorTheme) {
+            const grid = document.getElementById(gridId);
+            grid.innerHTML = '';
+
+            // 매번 시작할 때 보기 순서를 자연스럽게 섞어줌
+            const shuffledOptions = shuffleArray(GAME_DATA[`slot${slotNum}`].options);
+
+            shuffledOptions.forEach(word => {
+                const btn = document.createElement('button');
+                btn.type = 'button';
+                btn.dataset.word = word;
+                btn.className = `option-btn-${slotNum} w-full py-3.5 sm:py-4 px-3 rounded-2xl font-jua text-2xl sm:text-3xl tracking-wide bg-white border-b-4 border-2 border-${colorTheme}-300 text-slate-800 hover:bg-${colorTheme}-100 active:translate-y-0.5 shadow-sm transition-all flex items-center justify-center gap-2`;
+                btn.innerHTML = `<span>${word}</span>`;
+
+                btn.onclick = () => handleOptionClick(slotNum, word, btn);
+                grid.appendChild(btn);
+            });
+        }
+
+        // ==========================================
+        // 4. 보기 클릭 및 정답/오답 처리 로직
+        // ==========================================
+        function handleOptionClick(slotNum, selectedWord, btnElement) {
+            const slotKey = `slot${slotNum}`;
+            const slotData = GAME_DATA[slotKey];
+
+            // 이미 맞힌 빈칸이면 무시
+            if (slotData.solved) return;
+
+            const slotBox = document.getElementById(`slot${slotNum}`);
+            const slotText = document.getElementById(`slot${slotNum}Text`);
+
+            // 1) 누르자마자 글자를 빈칸에 즉시 표시
+            slotText.textContent = selectedWord;
+            slotText.classList.remove('text-emerald-700/60', 'animate-pop');
+            void slotText.offsetWidth; // 애니메이션 리셋 트릭
+            slotText.classList.add('animate-pop');
+
+            // 2) 정답 확인
+            if (selectedWord === slotData.answer) {
+                // [정답인 경우]
+                slotData.solved = true;
+
+                // 빈칸 스타일을 정답 확정 스타일로 변경
+                slotBox.className = "absolute " + (slotNum === 1 ? "top-[20.5%] left-[12%] w-[43%] h-[12.5%]" : "top-[24%] right-[9%] w-[34%] h-[12.5%]") +
+                    " rounded-2xl border-4 border-solid border-emerald-500 bg-white shadow-xl flex items-center justify-center transition-all";
+                slotText.className = "font-jua text-3xl sm:text-4xl text-emerald-700 animate-pop";
+
+                // 해당 그룹의 버튼들 비활성화 및 정답 표시
+                const allBtns = document.querySelectorAll(`.option-btn-${slotNum}`);
+                allBtns.forEach(b => {
+                    b.disabled = true;
+                    if (b.dataset.word === selectedWord) {
+                        b.className = "w-full py-3.5 sm:py-4 px-3 rounded-2xl font-jua text-2xl sm:text-3xl bg-emerald-500 text-white border-2 border-emerald-600 shadow-inner flex items-center justify-center gap-2";
+                        b.innerHTML = `<span>${selectedWord}</span> <span class="text-xl">⭕</span>`;
+                    } else {
+                        b.classList.add('opacity-40', 'cursor-not-allowed');
+                    }
+                });
+
+                // 완료 배지 표시
+                document.getElementById(`group${slotNum}Badge`).classList.remove('hidden');
+
+                // 피드백 배너 업데이트
+                updateFeedback(`정답이에요! '${selectedWord}' 글자가 제자리에 들어갔어요! 👏`, 'success');
+
+                // 음성 출력: 누른 글자 + 칭찬 멘트
+                speak(`${selectedWord}! 정답이에요, 참 잘했어요!`, () => {
+                    checkAllCompleted();
+                });
+
+                // 음성 꺼짐 모드일 때도 완료 체크
+                if (!isTTSEnabled) {
+                    checkAllCompleted();
+                }
+
+            } else {
+                // [오답인 경우]
+                // 빈칸에 잠깐 들어갔다가 빨간색으로 흔들리며 제자리로 돌아감
+                slotBox.classList.remove('border-emerald-600', 'bg-white/95');
+                slotBox.classList.add('border-rose-500', 'bg-rose-50', 'animate-shake');
+                slotText.className = "font-jua text-2xl sm:text-3xl text-rose-600";
+
+                btnElement.classList.add('bg-rose-100', 'border-rose-400', 'text-rose-700', 'animate-shake');
+
+                updateFeedback(`'${selectedWord}'는 조금 달라요. 다시 한 번 살펴볼까요? 😊`, 'error');
+
+                // 친절한 오답 음성 안내
+                speak(`${selectedWord}. 아쉽지만 다른 글자예요. 다시 한 번 생각해볼까요?`);
+
+                // 1.1초 후 부드럽게 원래 빈칸 상태로 복귀
+                setTimeout(() => {
+                    if (!slotData.solved) {
+                        slotBox.classList.remove('border-rose-500', 'bg-rose-50', 'animate-shake');
+                        slotBox.classList.add('border-emerald-600', 'bg-white/95');
+                        slotText.textContent = `${slotNum}번 빈칸`;
+                        slotText.className = "font-jua text-2xl sm:text-3xl text-emerald-700/60";
+                    }
+                    btnElement.classList.remove('bg-rose-100', 'border-rose-400', 'text-rose-700', 'animate-shake');
+                }, 1150);
+            }
+        }
+
+        // ==========================================
+        // 5. 전체 완성 및 피드백 / 부가 기능
+        // ==========================================
+        function checkAllCompleted() {
+            if (GAME_DATA.slot1.solved && GAME_DATA.slot2.solved) {
+                // 축하 폭죽 효과
+                if (typeof confetti === 'function') {
+                    confetti({
+                        particleCount: 90,
+                        spread: 75,
+                        origin: { y: 0.6 }
+                    });
+                }
+
+                updateFeedback("축하합니다! '끝까지 해 보자, 때밀이 장갑!' 완성! 🎉", 'success');
+
+                setTimeout(() => {
+                    document.getElementById('successModal').classList.remove('hidden');
+                    speak("참 잘했어요! 끝까지 해 보자, 때밀이 장갑!");
+                }, 400);
+            }
+        }
+
+        function updateFeedback(message, type) {
+            const banner = document.getElementById('feedbackBanner');
+            const text = document.getElementById('feedbackText');
+            text.textContent = message;
+
+            banner.className = "w-full rounded-2xl p-3 text-center transition-all border-2 ";
+            if (type === 'success') {
+                banner.className += "bg-emerald-100 border-emerald-400 text-emerald-950";
+            } else if (type === 'error') {
+                banner.className += "bg-rose-100 border-rose-300 text-rose-950";
+            } else {
+                banner.className += "bg-amber-100 border-amber-300 text-amber-950";
+            }
+        }
+
+        // 빈칸 직접 터치 시 힌트 음성
+        function speakSlotHint(slotNum) {
+            if (GAME_DATA[`slot${slotNum}`].solved) {
+                speak(GAME_DATA[`slot${slotNum}`].answer);
+            } else {
+                speak(`${slotNum}번 빈칸에 들어갈 알맞은 글자를 아래에서 찾아 눌러보세요.`);
+            }
+        }
+
+        // 전체 제목 읽어주기 버튼
+        function readFullTitle() {
+            const part1 = GAME_DATA.slot1.solved ? "때밀이" : "무엇";
+            const part2 = GAME_DATA.slot2.solved ? "장갑!" : "무엇!";
+            if (GAME_DATA.slot1.solved && GAME_DATA.slot2.solved) {
+                speak("끝까지 해 보자, 때밀이 장갑!");
+            } else {
+                speak(`끝까지 해 보자, ${part1} ${part2}`);
+            }
+        }
+
+        // 게임 초기화 (다시하기)
+        function resetGame() {
+            window.speechSynthesis.cancel();
+            GAME_DATA.slot1.solved = false;
+            GAME_DATA.slot2.solved = false;
+
+            document.getElementById('successModal').classList.add('hidden');
+            document.getElementById('group1Badge').classList.add('hidden');
+            document.getElementById('group2Badge').classList.add('hidden');
+
+            // 빈칸 1, 2 초기화
+            const slot1 = document.getElementById('slot1');
+            slot1.className = "absolute top-[20.5%] left-[12%] w-[43%] h-[12.5%] rounded-2xl border-4 border-dashed border-emerald-600 bg-white/95 shadow-lg flex items-center justify-center cursor-pointer transition-all";
+            document.getElementById('slot1Text').textContent = "1번 빈칸";
+            document.getElementById('slot1Text').className = "font-jua text-2xl sm:text-3xl text-emerald-700/60";
+
+            const slot2 = document.getElementById('slot2');
+            slot2.className = "absolute top-[24%] right-[9%] w-[34%] h-[12.5%] rounded-2xl border-4 border-dashed border-emerald-600 bg-white/95 shadow-lg flex items-center justify-center cursor-pointer transition-all";
+            document.getElementById('slot2Text').textContent = "2번 빈칸";
+            document.getElementById('slot2Text').className = "font-jua text-2xl sm:text-3xl text-emerald-700/60";
+
+            updateFeedback("알맞은 글자 카드를 눌러 빈칸을 채워보세요!", "default");
+            renderOptions();
+        }
+
+        // 페이지 로드 시 초기화 실행
+        window.onload = function() {
+            // 이전에 저장된 표지 사진이 있다면 자동으로 불러오기
+            const savedImg = localStorage.getItem('savedBookCoverImg');
+            if (savedImg) {
+                applyCoverImage(savedImg);
+            }
+            renderOptions();
+        };
+    </script>
+</body>
+</html>
